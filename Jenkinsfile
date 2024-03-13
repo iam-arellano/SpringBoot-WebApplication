@@ -58,7 +58,7 @@ pipeline {
                  
                             withDockerRegistry(credentialsId: 'jenkins-docker-credentials', toolName: 'docker-from-manage-tools')  {
                             sh "docker build -t springboot-webapp ."
-                            sh "docker tag webapp raemondarellano/springboot-webapp:latest"
+                            sh "docker tag springboot-webapp raemondarellano/springboot-webapp:latest"
                             sh "docker push raemondarellano/springboot-webapp:latest "
                         }
                    } 
