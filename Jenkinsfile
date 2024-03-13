@@ -13,7 +13,7 @@ pipeline {
     stages {
         stage('Git Checkout ') {
             steps {
-                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/jaiswaladi246/SpringBoot-WebApplication.git'
+                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/iam-arellano/SpringBoot-WebApplication'
             }
         }
         
@@ -29,23 +29,22 @@ pipeline {
             }
         }
         
-        stage('Sonarqube Analysis') {
-            steps {
-                    withSonarQubeEnv('sonar-server') {
-                        sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Java-WebApp \
-                        -Dsonar.java.binaries=. \
-                        -Dsonar.projectKey=Java-WebApp '''
-    
-                }
-            }
-        }
+          stage("SonarQube Analysis"){
+           steps {
+	           script {
+		        withSonarQubeEnv(credentialsId: 'sonarqube_access') { 
+                        sh "mvn sonar:sonar"
+		        }
+	           }	
+           }
+       }
         
-        stage('OWASP Dependency Check') {
-            steps {
-                   dependencyCheck additionalArguments: '--scan ./   ', odcInstallation: 'DP'
-                   dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
+        // stage('OWASP Dependency Check') {
+        //     steps {
+        //            dependencyCheck additionalArguments: '--scan ./   ', odcInstallation: 'DP'
+        //            dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        //     }
+        // }
         
         stage('Maven Build') {
             steps {
@@ -56,20 +55,28 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                    script {
-                       withDockerRegistry(credentialsId: 'b289dc43-2ede-4bd0-95e8-75ca26100d8d', toolName: 'docker') {
-                            sh "docker build -t webapp ."
-                            sh "docker tag webapp adijaiswal/webapp:latest"
-                            sh "docker push adijaiswal/webapp:latest "
+                    //    withDockerRegistry(credentialsId: 'b289dc43-2ede-4bd0-95e8-75ca26100d8d', toolName: 'docker-from-manage-tools')
+                            withDockerRegistry(credentialsId: 'jenkins-docker-credentials', toolName: 'docker-from-manage-tools')  {
+                            sh "docker build -t springboot-webapp ."
+                            sh "docker tag springboot-webapp raemondarellano/springboot-webapp:latest"
+                            sh "docker push raemondarellano/springboot-webapp:latest "
                         }
                    } 
             }
         }
         
-        stage('Docker Image scan') {
-            steps {
-                    sh "trivy image adijaiswal/webapp:latest "
-            }
-        }
+        // stage('Docker Image scan') {
+        //     steps {
+        //             sh "trivy image raemondarellano/springboot-webapp::latest "
+        //     }
+        // }
+            stage("Trivy Scan") {
+           steps {
+               script {
+	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image raemondarellano/springboot-webapp:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
+               }
+           }
+       }
         
     }
 }
